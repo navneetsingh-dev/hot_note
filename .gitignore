@@ -2,6 +2,7 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=kotlin,android,macos,xcode
 
 ### Android ###
+>>>>>>> c3ac7b059034f50605bb15ea2b25dd7505257c6b
 # Gradle files
 .gradle/
 build/
@@ -18,6 +19,10 @@ captures/
 .cxx/
 *.apk
 output.json
+*.aab
+*.apk
+output-metadata.json
+>>>>>>> c3ac7b059034f50605bb15ea2b25dd7505257c6b
 
 # IntelliJ
 *.iml
@@ -123,3 +128,4 @@ xcuserdata/
 build/
 composeApp/build/
 iosApp/build/
+>>>>>>> c3ac7b059034f50605bb15ea2b25dd7505257c6b
