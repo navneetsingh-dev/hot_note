@@ -1,0 +1,23 @@
+CREATE TABLE NoteEntity (
+    id TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    contentBlocks TEXT NOT NULL,
+    createdAt INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
+
+insertNote:
+INSERT OR REPLACE INTO NoteEntity(id, title, contentBlocks, createdAt, updatedAt)
+VALUES (?, ?, ?, ?, ?);
+
+getAllNotes:
+SELECT * FROM NoteEntity
+ORDER BY updatedAt DESC;
+
+getNoteById:
+SELECT * FROM NoteEntity
+WHERE id = ?;
+
+deleteNoteById:
+DELETE FROM NoteEntity
+WHERE id = ?;
