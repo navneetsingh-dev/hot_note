@@ -48,8 +48,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.example.project.NoteListState
 import org.example.project.database.NoteEntity
+import androidx.compose.material3.ButtonDefaults
+enum class DrawingTool {
+    PEN, SKETCH, BRUSH
+}
 
-data class StrokeLine(val points: List<Offset>)
+
+data class StrokeLine(
+    val points: List<Offset>,
+    val tool: DrawingTool = DrawingTool.PEN
+)
 
 @Composable
 fun NoteListScreen(
@@ -156,6 +164,7 @@ fun NoteListScreen(
 
 @Composable
 fun TabletEditor(onSave: (String, String) -> Unit, onCancel: () -> Unit) {
+    var currentTool by remember { mutableStateOf(DrawingTool.PEN) }
     var title by remember { mutableStateOf("") }
     var textContent by remember { mutableStateOf("") }
     var drawingContent by remember { mutableStateOf("") }
@@ -172,6 +181,21 @@ fun TabletEditor(onSave: (String, String) -> Unit, onCancel: () -> Unit) {
                 Text("Type", modifier = Modifier.padding(end = 8.dp))
                 Switch(checked = isDrawingMode, onCheckedChange = { isDrawingMode = it })
                 Text("Draw", modifier = Modifier.padding(start = 8.dp))
+            }
+            if(isDrawingMode){
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp))
+
+                    {
+                        ToolButton("Pen", currentTool == DrawingTool.PEN) {
+                            currentTool = DrawingTool.PEN
+                        }
+                        ToolButton("Sketch", currentTool == DrawingTool.SKETCH) {
+                            currentTool = DrawingTool.SKETCH
+                        }
+                        ToolButton("Brush", currentTool == DrawingTool.BRUSH) {
+                            currentTool = DrawingTool.BRUSH
+                        }
+                    }
             }
 
             Row {
@@ -207,6 +231,7 @@ fun TabletEditor(onSave: (String, String) -> Unit, onCancel: () -> Unit) {
         if (isDrawingMode) {
             StylusCanvas(
                 modifier = Modifier.fillMaxSize(),
+                selectedTool = currentTool,
                 onPathsChanged = { drawingContent = it }
             )
         } else {
@@ -257,10 +282,19 @@ fun NoteViewer(note: NoteEntity) {
             val serialized = note.contentBlocks.removePrefix("DRAWING:")
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val lines = serialized.split("|")
-                for (line in lines) {
-                    if (line.isBlank()) continue
-                    val points = line.split(";")
+                for (lineStr in lines) {
+                    if (lineStr.isBlank()) continue
+
+                    // NEW: Split the line data to separate the Tool from the Coordinates
+                    val parts = lineStr.split(":")
+                    if (parts.size != 2) continue
+
+                    // NEW: Figure out which tool was used (Default to PEN if something goes wrong)
+                    val tool = try { DrawingTool.valueOf(parts[0]) } catch (e: Exception) { DrawingTool.PEN }
+                    val pointsStr = parts[1]
+
                     val path = Path()
+                    val points = pointsStr.split(";")
                     points.forEachIndexed { index, pointStr ->
                         val coords = pointStr.split(",")
                         if (coords.size == 2) {
@@ -269,7 +303,10 @@ fun NoteViewer(note: NoteEntity) {
                             if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
                         }
                     }
-                    drawPath(path, Color.DarkGray, style = Stroke(width = 6f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+
+                    // NEW: Apply the correct style for this specific line
+                    val (color, strokeWidth) = getToolStyle(tool)
+                    drawPath(path, color, style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round))
                 }
             }
         } else {
@@ -279,7 +316,7 @@ fun NoteViewer(note: NoteEntity) {
 }
 
 @Composable
-fun StylusCanvas(modifier: Modifier = Modifier, onPathsChanged: (String) -> Unit) {
+fun StylusCanvas(modifier: Modifier = Modifier, selectedTool: DrawingTool, onPathsChanged: (String) -> Unit) {
     var lines by remember { mutableStateOf(emptyList<StrokeLine>()) }
     var currentLine by remember { mutableStateOf(emptyList<Offset>()) }
 
@@ -289,29 +326,54 @@ fun StylusCanvas(modifier: Modifier = Modifier, onPathsChanged: (String) -> Unit
                 onDragStart = { offset -> currentLine = listOf(offset) },
                 onDrag = { change, _ -> currentLine = currentLine + change.position },
                 onDragEnd = {
-                    lines = lines + StrokeLine(currentLine)
+                    lines = lines + StrokeLine(currentLine, selectedTool)
                     currentLine = emptyList()
                     val serialized = lines.joinToString("|") { line ->
-                        line.points.joinToString(";") { "${it.x},${it.y}" }
+                        val coords = line.points.joinToString(";") { "${it.x},${it.y}" }
+                        "${line.tool}:$coords"
                     }
                     onPathsChanged("DRAWING:$serialized")
                 }
             )
         }
     ) {
+        // Render completed lines
         lines.forEach { line ->
             val path = Path()
             if (line.points.isNotEmpty()) {
                 path.moveTo(line.points.first().x, line.points.first().y)
                 for (i in 1 until line.points.size) { path.lineTo(line.points[i].x, line.points[i].y) }
             }
-            drawPath(path, Color.Black, style = Stroke(width = 6f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            val (color, strokeWidth) = getToolStyle(line.tool)
+            drawPath(path, color, style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
+
+        // Render the line currently being drawn
         if (currentLine.isNotEmpty()) {
             val path = Path()
             path.moveTo(currentLine.first().x, currentLine.first().y)
             for (i in 1 until currentLine.size) { path.lineTo(currentLine[i].x, currentLine[i].y) }
-            drawPath(path, Color.Black, style = Stroke(width = 6f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            val (color, strokeWidth) = getToolStyle(selectedTool)
+            drawPath(path, color, style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
     }
 }
+    @Composable
+    fun ToolButton(text: String, isSelected: Boolean, onClick: () -> Unit) {
+        Button(
+            onClick = onClick,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        ) {
+            Text(text, style = MaterialTheme.typography.labelSmall)
+        }
+    }
+    fun getToolStyle(tool: DrawingTool): Pair<Color, Float> {
+        return when (tool) {
+            DrawingTool.PEN -> Pair(Color.Black, 4f)          // Thin, precise writing pen
+            DrawingTool.SKETCH -> Pair(Color.DarkGray, 8f)    // Medium-weight pencil/sketch line
+            DrawingTool.BRUSH -> Pair(Color.Black.copy(alpha = 0.6f), 20f) // Thick, semi-transparent marker
+        }
+    }

@@ -21,4 +21,4 @@ A lightweight, local-first KMP note-taking app for Android and iOS featuring off
 
                                         [ P2P network ]
                   ====================> (live screen)  ---> (to be released later)
-                  (future feature)      [  updated  ]
+                  (future feature)      [  updated  ]gi
