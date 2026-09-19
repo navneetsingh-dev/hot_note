@@ -59,6 +59,7 @@ data class StrokeLine(
     val tool: DrawingTool = DrawingTool.PEN
 )
 
+
 @Composable
 fun NoteListScreen(
     state: NoteListState,
@@ -69,93 +70,75 @@ fun NoteListScreen(
     var isCreatingNew by remember { mutableStateOf(false) }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        val isPhone = maxWidth < 600.dp
-        val showEditor = selectedNote != null || isCreatingNew
+        // Increased threshold to 840.dp to catch phones in landscape mode
+        val isPhone = maxWidth < 840.dp
 
-        if (isPhone) {
-            // ==========================================
-            // PHONE MODE (Full Screen single view)
-            // ==========================================
-            if (showEditor) {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
-                    if (isCreatingNew) {
-                        TabletEditor(
-                            onSave = { title, content ->
-                                onSaveNote(title, content)
-                                isCreatingNew = false
-                            },
-                            onCancel = { isCreatingNew = false }
-                        )
-                    } else if (selectedNote != null) {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            TextButton(
-                                onClick = { selectedNote = null },
-                                modifier = Modifier.padding(8.dp)
-                            ) { Text("< Back to Notes") }
-                            NoteViewer(note = selectedNote!!)
-                        }
-                    }
+        // RULE 1: If creating a new note, ALWAYS use 100% of the screen! (Sidebar is completely gone)
+        if (isCreatingNew) {
+            TabletEditor(
+                onSave = { title, content ->
+                    onSaveNote(title, content)
+                    isCreatingNew = false
+                },
+                onCancel = { isCreatingNew = false }
+            )
+        }
+        // RULE 2: If viewing a note on a phone, use 100% of the screen
+        else if (isPhone && selectedNote != null) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                TextButton(
+                    onClick = { selectedNote = null },
+                    modifier = Modifier.padding(8.dp)
+                ) { Text("< Back to Notes") }
+                NoteViewer(note = selectedNote!!)
+            }
+        }
+        // RULE 3: If on a phone and NO note is selected, show the 100% full screen list
+        else if (isPhone && selectedNote == null) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Hot Note", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FloatingActionButton(
+                        onClick = {
+                            selectedNote = null
+                            isCreatingNew = true
+                        },
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ) { Text("+", style = MaterialTheme.typography.headlineMedium) }
                 }
-            } else {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceVariant) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = "Hot Note", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            FloatingActionButton(
-                                onClick = {
-                                    selectedNote = null
-                                    isCreatingNew = true
-                                },
-                                containerColor = MaterialTheme.colorScheme.primary
-                            ) { Text("+", style = MaterialTheme.typography.headlineMedium) }
-                        }
-                        Divider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
-                        if (state.isLoading) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                        } else if (state.notes.isEmpty()) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("No notes yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        } else {
-                            LazyColumn(modifier = Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                items(state.notes) { note ->
-                                    SidebarNoteCard(
-                                        note = note,
-                                        isSelected = selectedNote?.id == note.id,
-                                        onClick = {
-                                            isCreatingNew = false
-                                            selectedNote = note
-                                        },
-                                        onDelete = {
-                                            if (selectedNote?.id == note.id) selectedNote = null
-                                            onDeleteNote(note.id)
-                                        }
-                                    )
-                                }
-                            }
+
+                Divider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+
+                if (state.isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                } else if (state.notes.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("No notes yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(state.notes) { note ->
+                            SidebarNoteCard(
+                                note = note,
+                                isSelected = false,
+                                onClick = { selectedNote = note },
+                                onDelete = { onDeleteNote(note.id) }
+                            )
                         }
                     }
                 }
             }
-        } else {
-            // ==========================================
-            // TABLET MODE (35% Sidebar / 65% Editor)
-            // ==========================================
+        }
+        // RULE 4: If on a TABLET and viewing notes, show the Split Screen List & Viewer
+        else {
             Row(modifier = Modifier.fillMaxSize()) {
-                Surface(
-                    modifier = Modifier.weight(0.35f).fillMaxHeight(),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    tonalElevation = 2.dp
-                ) {
+                // LEFT SIDEBAR (35%)
+                Surface(modifier = Modifier.weight(0.35f).fillMaxHeight(), color = MaterialTheme.colorScheme.surfaceVariant, tonalElevation = 2.dp) {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = "Hot Note", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text("Hot Note", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             FloatingActionButton(
                                 onClick = {
                                     selectedNote = null
@@ -175,10 +158,7 @@ fun NoteListScreen(
                                     SidebarNoteCard(
                                         note = note,
                                         isSelected = selectedNote?.id == note.id,
-                                        onClick = {
-                                            isCreatingNew = false
-                                            selectedNote = note
-                                        },
+                                        onClick = { selectedNote = note },
                                         onDelete = {
                                             if (selectedNote?.id == note.id) selectedNote = null
                                             onDeleteNote(note.id)
@@ -189,19 +169,10 @@ fun NoteListScreen(
                         }
                     }
                 }
-                Surface(
-                    modifier = Modifier.weight(0.65f).fillMaxHeight(),
-                    color = MaterialTheme.colorScheme.surface
-                ) {
-                    if (isCreatingNew) {
-                        TabletEditor(
-                            onSave = { title, content ->
-                                onSaveNote(title, content)
-                                isCreatingNew = false
-                            },
-                            onCancel = { isCreatingNew = false }
-                        )
-                    } else if (selectedNote != null) {
+
+                // RIGHT CANVAS EDITOR (65%)
+                Surface(modifier = Modifier.weight(0.65f).fillMaxHeight(), color = MaterialTheme.colorScheme.surface) {
+                    if (selectedNote != null) {
                         NoteViewer(note = selectedNote!!)
                     } else {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
