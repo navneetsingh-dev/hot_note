@@ -1,19 +1,27 @@
 package org.example.project
 
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import org.example.project.database.DatabaseDriverFactory
+import org.example.project.database.HotNoteDatabase
+import org.example.project.database.NoteRepository
+import org.example.project.ui.NoteListScreen
 
 @Composable
-fun App() {
+fun App(driverFactory: DatabaseDriverFactory) {
+    val database = remember { HotNoteDatabase(driverFactory.createDriver()) }
+    val repository = remember { NoteRepository(database) }
+    val viewModel = remember { NoteViewModel(repository) }
+    val state by viewModel.state.collectAsState()
+
     MaterialTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            // The HOT_NOTE Editor UI will be built here
-        }
+        NoteListScreen(
+            state = state,
+            onSaveNote = { title, content -> viewModel.saveNote(title, content) },
+            onDeleteNote = { id -> viewModel.deleteNoteById(id) }
+        )
     }
 }
