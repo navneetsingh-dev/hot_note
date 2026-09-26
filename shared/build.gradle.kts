@@ -7,6 +7,7 @@ plugins {
 }
 
 kotlin {
+    /*
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -16,6 +17,7 @@ kotlin {
             isStatic = true
         }
     }
+    */
     
     androidLibrary {
        namespace = "org.example.project.shared"
@@ -41,9 +43,11 @@ kotlin {
             implementation(libs.compose.uiTooling)
             implementation(libs.sqldelight.android)
         }
+        /*
         iosMain.dependencies {
             implementation(libs.sqldelight.native)
         }
+        */
         commonMain.dependencies {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
