@@ -51,6 +51,9 @@ import androidx.compose.ui.unit.dp
 import org.example.project.NoteListState
 import org.example.project.database.NoteEntity
 
+// The secret string used to split one note string into multiple pages
+const val PAGE_DELIMITER = "|||PAGE_BREAK|||"
+
 enum class DrawingTool {
     PEN, SKETCH, BRUSH
 }
@@ -60,7 +63,6 @@ data class StrokeLine(
     val tool: DrawingTool = DrawingTool.PEN
 )
 
-// Helper to convert the database text back into live drawing lines for viewing & editing
 fun parseDrawingString(serialized: String): List<StrokeLine> {
     val lines = mutableListOf<StrokeLine>()
     val stripped = serialized.removePrefix("DRAWING:")
@@ -96,9 +98,8 @@ fun NoteListScreen(
     var isEditing by remember { mutableStateOf(false) }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        val isPhone = maxWidth < 840.dp // Updated threshold to match your earlier BoxWithConstraints rules
+        val isPhone = maxWidth < 840.dp
 
-        // RULE 1: STRICT FULL-SCREEN OVERRIDE FOR CREATING OR EDITING NOTES
         if (isCreatingNew || isEditing) {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
                 TabletEditor(
@@ -106,9 +107,9 @@ fun NoteListScreen(
                     initialContent = if (isEditing) selectedNote?.contentBlocks ?: "" else "",
                     onSave = { title, content ->
                         if (isEditing && selectedNote != null) {
-                            onDeleteNote(selectedNote!!.id) // Remove old version
+                            onDeleteNote(selectedNote!!.id)
                         }
-                        onSaveNote(title, content) // Save new version
+                        onSaveNote(title, content)
                         isCreatingNew = false
                         isEditing = false
                         selectedNote = null
@@ -120,7 +121,6 @@ fun NoteListScreen(
                 )
             }
         }
-        // RULE 2: PHONE MODE - View Selected Note (Full Screen)
         else if (isPhone && selectedNote != null) {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -136,7 +136,6 @@ fun NoteListScreen(
                 }
             }
         }
-        // RULE 3: PHONE MODE - Sidebar Note List (Full Screen)
         else if (isPhone && selectedNote == null) {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceVariant) {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -175,7 +174,6 @@ fun NoteListScreen(
                 }
             }
         }
-        // RULE 4: TABLET MODE - Split Screen (Only for viewing notes)
         else {
             Row(modifier = Modifier.fillMaxSize()) {
                 Surface(
@@ -240,13 +238,28 @@ fun NoteListScreen(
 
 @Composable
 fun TabletEditor(initialTitle: String = "", initialContent: String = "", onSave: (String, String) -> Unit, onCancel: () -> Unit) {
-    val isInitialDrawing = initialContent.startsWith("DRAWING:")
-
-    var currentTool by remember { mutableStateOf(DrawingTool.PEN) }
     var title by remember { mutableStateOf(initialTitle) }
-    var textContent by remember { mutableStateOf(if (isInitialDrawing) "" else initialContent) }
-    var drawingContent by remember { mutableStateOf(if (isInitialDrawing) initialContent else "") }
-    var isDrawingMode by remember { mutableStateOf(if (initialContent.isNotBlank()) isInitialDrawing else true) }
+    var currentTool by remember { mutableStateOf(DrawingTool.PEN) }
+
+    // Pagination State
+    var pages by remember {
+        mutableStateOf(if (initialContent.isBlank()) listOf("") else initialContent.split(PAGE_DELIMITER))
+    }
+    var currentPageIndex by remember { mutableStateOf(0) }
+
+    val currentPageContent = pages[currentPageIndex]
+
+    // Check if the current page was previously a drawing
+    var isDrawingMode by remember(currentPageIndex) {
+        mutableStateOf(if (currentPageContent.isNotBlank()) currentPageContent.startsWith("DRAWING:") else true)
+    }
+
+    // Update the master list when the user draws or types on the current page
+    fun updatePage(content: String) {
+        val mutableList = pages.toMutableList()
+        mutableList[currentPageIndex] = content
+        pages = mutableList
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -337,7 +350,8 @@ fun TabletEditor(initialTitle: String = "", initialContent: String = "", onSave:
                 Button(
                     onClick = {
                         if (title.isNotBlank()) {
-                            val finalContent = if (isDrawingMode) drawingContent else textContent
+                            // Gluing all pages together before saving
+                            val finalContent = pages.joinToString(PAGE_DELIMITER)
                             onSave(title, finalContent)
                         }
                     },
@@ -355,41 +369,72 @@ fun TabletEditor(initialTitle: String = "", initialContent: String = "", onSave:
             placeholder = { Text("Page Title...", style = MaterialTheme.typography.headlineLarge, color = Color.Gray) },
             textStyle = MaterialTheme.typography.headlineLarge.copy(color = MaterialTheme.colorScheme.onSurface),
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color.Transparent,
                 unfocusedBorderColor = Color.Transparent
             )
         )
 
+        // Pagination Bar
+        Row(
+            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(
+                onClick = { if (currentPageIndex > 0) currentPageIndex-- },
+                enabled = currentPageIndex > 0
+            ) { Text("< Previous", color = if (currentPageIndex > 0) MaterialTheme.colorScheme.primary else Color.Gray) }
+
+            Text("Page ${currentPageIndex + 1} of ${pages.size}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            if (currentPageIndex < pages.size - 1) {
+                TextButton(onClick = { currentPageIndex++ }) { Text("Next >", color = MaterialTheme.colorScheme.primary) }
+            } else {
+                TextButton(onClick = {
+                    pages = pages + "" // Add empty page
+                    currentPageIndex++ // Jump to it
+                }) { Text("+ Add Page", color = MaterialTheme.colorScheme.primary) }
+            }
+        }
+
         Divider(color = MaterialTheme.colorScheme.surfaceVariant)
 
-        if (isDrawingMode) {
-            StylusCanvas(
-                modifier = Modifier.fillMaxSize(),
-                selectedTool = currentTool,
-                initialSerialized = initialContent,
-                onPathsChanged = { drawingContent = it }
-            )
-        } else {
-            OutlinedTextField(
-                value = textContent,
-                onValueChange = { textContent = it },
-                placeholder = { Text("Start typing...", color = Color.Gray) },
-                modifier = Modifier.fillMaxSize().padding(16.dp).background(Color(0xFFF9F9F9)),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black
+        // Ensure Box takes remaining space for both text and drawing
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            if (isDrawingMode) {
+                StylusCanvas(
+                    modifier = Modifier.fillMaxSize(),
+                    selectedTool = currentTool,
+                    initialSerialized = currentPageContent,
+                    onPathsChanged = { updatePage(it) }
                 )
-            )
+            } else {
+                OutlinedTextField(
+                    // Clear the field if the user flips a drawing page to text mode
+                    value = if (currentPageContent.startsWith("DRAWING:")) "" else currentPageContent,
+                    onValueChange = { updatePage(it) },
+                    placeholder = { Text("Start typing...", color = Color.Gray) },
+                    modifier = Modifier.fillMaxSize().background(Color(0xFFF9F9F9)).padding(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black
+                    )
+                )
+            }
         }
     }
 }
 
 @Composable
 fun SidebarNoteCard(note: NoteEntity, isSelected: Boolean, onClick: () -> Unit, onDelete: () -> Unit) {
+    val pages = note.contentBlocks.split(PAGE_DELIMITER)
+    val firstPage = pages.firstOrNull() ?: ""
+    val previewText = if (firstPage.startsWith("DRAWING:")) "[Handwritten Sketch]" else firstPage
+
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         colors = CardDefaults.cardColors(
@@ -399,11 +444,7 @@ fun SidebarNoteCard(note: NoteEntity, isSelected: Boolean, onClick: () -> Unit, 
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = note.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (!note.contentBlocks.startsWith("DRAWING:")) {
-                Text(text = note.contentBlocks, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.Gray)
-            } else {
-                Text(text = "[Handwritten Sketch]", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-            }
+            Text(text = "$previewText (${pages.size} page${if (pages.size > 1) "s" else ""})", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.Gray)
             TextButton(onClick = onDelete, modifier = Modifier.align(Alignment.End)) {
                 Text("Delete", color = MaterialTheme.colorScheme.error)
             }
@@ -413,50 +454,74 @@ fun SidebarNoteCard(note: NoteEntity, isSelected: Boolean, onClick: () -> Unit, 
 
 @Composable
 fun NoteViewer(note: NoteEntity, onEdit: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF9F9F9)).padding(24.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = note.title, style = MaterialTheme.typography.displaySmall, color = Color.Black)
+    val pages = note.contentBlocks.split(PAGE_DELIMITER)
+    var currentPageIndex by remember { mutableStateOf(0) }
+    val currentPageContent = pages[currentPageIndex]
 
-            // Edit Button (Forced Blue so it's always visible on the paper texture)
-            TextButton(onClick = onEdit) {
-                Text("Edit", color = Color.Blue)
+    Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF9F9F9))) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = note.title, style = MaterialTheme.typography.displaySmall, color = Color.Black)
+                TextButton(onClick = onEdit) {
+                    Text("Edit", color = Color.Blue)
+                }
+            }
+
+            // Pagination Controls for Viewer
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = { if (currentPageIndex > 0) currentPageIndex-- },
+                    enabled = currentPageIndex > 0
+                ) { Text("< Previous", color = if (currentPageIndex > 0) Color.Blue else Color.Gray) }
+
+                Text("Page ${currentPageIndex + 1} of ${pages.size}", color = Color.Gray)
+
+                TextButton(
+                    onClick = { if (currentPageIndex < pages.size - 1) currentPageIndex++ },
+                    enabled = currentPageIndex < pages.size - 1
+                ) { Text("Next >", color = if (currentPageIndex < pages.size - 1) Color.Blue else Color.Gray) }
             }
         }
-        Spacer(modifier = Modifier.height(24.dp))
 
-        if (note.contentBlocks.startsWith("DRAWING:")) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val canvasWidth = size.width
-                val canvasHeight = size.height
-                val lineSpacing = 80f
-                var y = lineSpacing
-                while (y < canvasHeight) {
-                    drawLine(
-                        color = Color.LightGray.copy(alpha = 0.5f),
-                        start = Offset(0f, y),
-                        end = Offset(canvasWidth, y),
-                        strokeWidth = 2f
-                    )
-                    y += lineSpacing
-                }
-
-                val lines = parseDrawingString(note.contentBlocks)
-                lines.forEach { line ->
-                    val path = Path()
-                    if (line.points.isNotEmpty()) {
-                        path.moveTo(line.points.first().x, line.points.first().y)
-                        for (i in 1 until line.points.size) { path.lineTo(line.points[i].x, line.points[i].y) }
+        Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 24.dp)) {
+            if (currentPageContent.startsWith("DRAWING:")) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val canvasWidth = size.width
+                    val canvasHeight = size.height
+                    val lineSpacing = 80f
+                    var y = lineSpacing
+                    while (y < canvasHeight) {
+                        drawLine(
+                            color = Color.LightGray.copy(alpha = 0.5f),
+                            start = Offset(0f, y),
+                            end = Offset(canvasWidth, y),
+                            strokeWidth = 2f
+                        )
+                        y += lineSpacing
                     }
-                    val (color, strokeWidth) = getToolStyle(line.tool)
-                    drawPath(path, color, style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round))
+
+                    val lines = parseDrawingString(currentPageContent)
+                    lines.forEach { line ->
+                        val path = Path()
+                        if (line.points.isNotEmpty()) {
+                            path.moveTo(line.points.first().x, line.points.first().y)
+                            for (i in 1 until line.points.size) { path.lineTo(line.points[i].x, line.points[i].y) }
+                        }
+                        val (color, strokeWidth) = getToolStyle(line.tool)
+                        drawPath(path, color, style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    }
                 }
+            } else {
+                Text(text = currentPageContent, style = MaterialTheme.typography.bodyLarge, color = Color.Black)
             }
-        } else {
-            Text(text = note.contentBlocks, style = MaterialTheme.typography.bodyLarge, color = Color.Black)
         }
     }
 }
@@ -468,6 +533,7 @@ fun StylusCanvas(
     initialSerialized: String = "",
     onPathsChanged: (String) -> Unit
 ) {
+    // When the user flips a page, this triggers a re-render of the old lines
     var lines by remember(initialSerialized) {
         mutableStateOf(if (initialSerialized.isNotBlank() && initialSerialized.startsWith("DRAWING:")) parseDrawingString(initialSerialized) else emptyList())
     }
