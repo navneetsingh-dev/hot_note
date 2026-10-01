@@ -1,55 +1,33 @@
-<<<<<<< HEAD
-# hot_note
-A lightweight, local-first KMP note-taking app for Android and iOS featuring offline capabilities, background sync, and Notion-style rich-text block formatting.
-### Application Workflow
+# Hot Note 🔥
 
-```text
-+-----------------------------------+
-| Screen 1                          |
-| 1. collection of previous notes   |
-| 2. Option to share with devices   |
-| 3. Option to create new note      |
-+-----------------------------------+
-                  |
-                  v
-+-----------------------------------+
-| Screen 2 (main screen             |
-|          note taking)             |
-| 1. Option to choose b/w sketches  |
-|    and pen                        |
-| 2. leverage to type or use e-pen  |
-+-----------------------------------+
+A modern, Notion-inspired, cross-platform note-taking application built with Kotlin Multiplatform. Designed for seamless productivity, Hot Note allows users to effortlessly organize subjects and switch between typed text and free-hand sketches on a digital notebook canvas.
 
-                                        [ P2P network ]
-                  ====================> (live screen)  ---> (to be released later)
-                  (future feature)      [  updated  ]gi
-=======
-# HOT_NOTE
+## ✨ Key Features
 
-A cross-platform mobile note-taking application (Android/iOS) built using Kotlin Multiplatform and Compose. **HOT_NOTE** implements a local-first, offline-capable database architecture with reliable cross-device conflict resolution and background syncing. The UI features a custom rich-text block rendering engine for advanced, Notion-style document formatting while maintaining a highly lightweight memory footprint.
+* **Subject Folders:** A clean, file-manager style grid interface to organize your notes by topic or subject.
+* **Hybrid Note Editor:** Instantly toggle between distraction-free typing and a drawing canvas using professional segmented controls.
+* **Advanced Drawing Tools:** Custom-built stylus support featuring Pen, Sketch, and Brush tools with a beautiful ruled-paper background texture.
+* **Smart Pagination:** Built-in multi-page support allowing you to mix and match text pages and drawing pages inside a single note.
+* **Distraction-Free UI:** Adapts to phone and tablet layouts. The sidebar automatically hides during note creation and editing for a full-screen experience.
+* **Notion-Inspired Themes:** A fully customized dark and light mode color palette for a sleek, minimalist aesthetic.
+* **Native System Integrations:** Includes system-level integrations like Activity Result API Bluetooth prompts.
 
-## ✨ Features
-
-* **Advanced Formatting:** Notion-style rich-text blocks for structured, beautiful, and customizable notes.
-* **Cross-Device Sync:** Seamless, conflict-free background syncing across all connected devices.
-* **Lightweight:** Highly optimized native binaries for maximum performance, snappy interactions, and minimal memory usage.
-* **Local-First:** Prioritizes local on-device storage for immediate read/write access without network latency.
-* **Offline Capable:** Fully functional without an internet connection. Edits are saved locally and synced automatically when a connection is restored.
-
-## 🛠️ Tech Stack
+## 🛠️ Technology Stack
 
 * **Language:** Kotlin
-* **Framework:** Kotlin Multiplatform (KMP)
-* **User Interface:** Compose Multiplatform 
-* **Database:** SQLDelight / Room (Local-first storage)
-* **Networking:** Ktor Client
-* **Serialization:** `kotlinx.serialization`
+* **UI Framework:** Compose Multiplatform / Jetpack Compose
+* **Database:** SQLDelight (SQLite) for efficient, local, cross-platform data persistence.
+* **Architecture:** Kotlin Multiplatform (KMP) shared UI and business logic.
 
 ## 🚀 Getting Started
 
-*(Instructions for cloning, building, and running the project will be added here once the initial KMP architecture is fully scaffolded.)*
+### Prerequisites
+* [Android Studio](https://developer.android.com/studio) (Latest version recommended)
+* JDK 17 or higher
+* Git
 
-## 📄 License
+### Installation
 
-This project is licensed under the [MIT License](LICENSE).
->>>>>>> main
+1. Clone the repository:
+   ```bash
+   git clone [https://github.com/navneetsingh-dev/hot_note.git](https://github.com/navneetsingh-dev/hot_note.git)
