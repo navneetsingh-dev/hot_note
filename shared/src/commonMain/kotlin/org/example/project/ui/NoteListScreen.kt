@@ -91,7 +91,8 @@ fun parseDrawingString(serialized: String): List<StrokeLine> {
 fun NoteListScreen(
     state: NoteListState,
     onSaveNote: (String, String) -> Unit,
-    onDeleteNote: (String) -> Unit
+    onDeleteNote: (String) -> Unit, // FIX 1: Added the missing comma here
+    onBack: () -> Unit
 ) {
     var selectedNote by remember { mutableStateOf<NoteEntity?>(null) }
     var isCreatingNew by remember { mutableStateOf(false) }
@@ -144,7 +145,13 @@ fun NoteListScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "Hot Note", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        // FIX 2: Added the Back Button to the Phone Layout
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = onBack) {
+                                Text("< Back", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+                            }
+                            Text(text = "Notes", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         FloatingActionButton(
                             onClick = {
                                 selectedNote = null
@@ -187,7 +194,12 @@ fun NoteListScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(text = "Hot Note", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(onClick = onBack) {
+                                    Text("< Back", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+                                }
+                                Text(text = "Notes", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                             FloatingActionButton(
                                 onClick = {
                                     selectedNote = null
