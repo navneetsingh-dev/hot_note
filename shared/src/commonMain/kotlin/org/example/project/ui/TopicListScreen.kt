@@ -1,10 +1,11 @@
 package org.example.project.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,14 +16,12 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-
-
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -36,20 +35,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
-
-// Temporary Data Class until we update the SQLDelight Database
-data class TopicFolder(val id: Long, val name: String, val noteCount: Int = 0)
+import org.example.project.database.FolderEntity // <-- Imported the REAL database entity
 
 @Composable
 fun TopicListScreen(
-    folders: List<TopicFolder>,
-    onFolderClick: (TopicFolder) -> Unit,
+    folders: List<FolderEntity>, // <-- Now expects the REAL entity
+    onFolderClick: (FolderEntity) -> Unit,
     onCreateFolder: (String) -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
@@ -57,23 +55,24 @@ fun TopicListScreen(
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxSize()) {
+
             // Top Bar
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(16.dp)
             ) {
                 Text(
                     text = "Subjects",
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onBackground,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.Center)
                 )
                 FloatingActionButton(
                     onClick = { showAddDialog = true },
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.CenterEnd)
                 ) {
                     Text("+", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onPrimary)
                 }
@@ -100,12 +99,12 @@ fun TopicListScreen(
         if (showAddDialog) {
             AlertDialog(
                 onDismissRequest = { showAddDialog = false },
-                title = { Text("New Subject Folder") },
+                title = { Text("New Folder") },
                 text = {
                     OutlinedTextField(
                         value = newFolderName,
                         onValueChange = { newFolderName = it },
-                        placeholder = { Text("e.g. Mathematics, Ideas, Work") },
+                        placeholder = { Text("e.g. Research, Ideas, Work") },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -135,7 +134,7 @@ fun TopicListScreen(
 }
 
 @Composable
-fun FolderCard(folder: TopicFolder, onClick: () -> Unit) {
+fun FolderCard(folder: FolderEntity, onClick: () -> Unit) { // <-- Uses REAL entity here too
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -150,11 +149,8 @@ fun FolderCard(folder: TopicFolder, onClick: () -> Unit) {
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            Text(
-                text = "📁",
-                style = MaterialTheme.typography.displaySmall
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+            NotionStyleFolderIcon(modifier = Modifier.size(42.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = folder.name,
                 style = MaterialTheme.typography.titleMedium,
@@ -162,11 +158,29 @@ fun FolderCard(folder: TopicFolder, onClick: () -> Unit) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = "${folder.noteCount} notes",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary
-            )
         }
+    }
+}
+
+@Composable
+fun NotionStyleFolderIcon(modifier: Modifier = Modifier) {
+    val iconColor = MaterialTheme.colorScheme.primary
+
+    Canvas(modifier = modifier) {
+        val cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
+
+        drawRoundRect(
+            color = iconColor.copy(alpha = 0.5f),
+            topLeft = Offset(0f, 0f),
+            size = Size(size.width * 0.45f, size.height * 0.3f),
+            cornerRadius = cornerRadius
+        )
+
+        drawRoundRect(
+            color = iconColor,
+            topLeft = Offset(0f, size.height * 0.2f),
+            size = Size(size.width, size.height * 0.8f),
+            cornerRadius = cornerRadius
+        )
     }
 }

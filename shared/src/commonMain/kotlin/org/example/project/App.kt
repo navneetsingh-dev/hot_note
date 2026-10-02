@@ -12,10 +12,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import org.example.project.database.DatabaseDriverFactory
+import org.example.project.database.FolderEntity
 import org.example.project.database.HotNoteDatabase
 import org.example.project.database.NoteRepository
 import org.example.project.ui.NoteListScreen
-import org.example.project.ui.TopicFolder
 import org.example.project.ui.TopicListScreen
 
 private val NotionDarkColors = darkColorScheme(
@@ -45,41 +45,39 @@ fun App(driverFactory: DatabaseDriverFactory) {
     val database = remember { HotNoteDatabase(driverFactory.createDriver()) }
     val repository = remember { NoteRepository(database) }
     val viewModel = remember { NoteViewModel(repository) }
-    val state by viewModel.state.collectAsState()
+
+    // 1. Collect the real DB streams from the ViewModel
+    val folders by viewModel.folders.collectAsState()
+    val noteState by viewModel.noteState.collectAsState()
+
+    // 2. UI Routing State (Now using the real FolderEntity from SQLDelight)
+    var selectedFolder by remember { mutableStateOf<FolderEntity?>(null) }
 
     val colorScheme = if (isSystemInDarkTheme()) NotionDarkColors else NotionLightColors
 
-    // 1. The Routing State: Tracks which folder you are currently viewing
-    var selectedFolder by remember { mutableStateOf<TopicFolder?>(null) }
-
-    // 2. Temporary Mock Data (We will replace this with SQLDelight later)
-    var mockFolders by remember {
-        mutableStateOf(listOf(
-            TopicFolder(1, "Computer Science", 4),
-            TopicFolder(2, "Personal", 1)
-        ))
-    }
-
     MaterialTheme(colorScheme = colorScheme) {
-        // 3. The Traffic Cop Logic
         if (selectedFolder == null) {
-            // If no folder is selected, show Screen 1 (The File Manager)
+            // SCREEN 1: Real Folders from Database
             TopicListScreen(
-                folders = mockFolders,
-                onFolderClick = { folder -> selectedFolder = folder }, // Tapping a folder updates the state
+                folders = folders,
+                onFolderClick = { folder ->
+                    selectedFolder = folder
+                    viewModel.selectFolder(folder.id) // Tell ViewModel to load this folder's notes
+                },
                 onCreateFolder = { folderName ->
-                    val newFolder = TopicFolder(id = (mockFolders.size + 1).toLong(), name = folderName)
-                    mockFolders = mockFolders + newFolder
+                    viewModel.createFolder(folderName)
                 }
             )
         } else {
-            // If a folder IS selected, show Screen 2 (The Note Editor)
+            // SCREEN 2: Notes linked to the selected folder
             NoteListScreen(
-                state = state,
+                state = noteState,
                 onSaveNote = { title, content -> viewModel.saveNote(title, content) },
                 onDeleteNote = { id -> viewModel.deleteNoteById(id) },
-                onBack = { selectedFolder = null }
-
+                onBack = {
+                    selectedFolder = null
+                    viewModel.selectFolder(null) // Tell ViewModel we left the folder
+                }
             )
         }
     }
