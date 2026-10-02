@@ -1,17 +1,42 @@
+CREATE TABLE FolderEntity (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    createdAt INTEGER NOT NULL
+);
+
 CREATE TABLE NoteEntity (
     id TEXT NOT NULL PRIMARY KEY,
+    folderId INTEGER NOT NULL,
     title TEXT NOT NULL,
     contentBlocks TEXT NOT NULL,
     createdAt INTEGER NOT NULL,
-    updatedAt INTEGER NOT NULL
+    updatedAt INTEGER NOT NULL,
+    FOREIGN KEY (folderId) REFERENCES FolderEntity(id) ON DELETE CASCADE
 );
 
-insertNote:
-INSERT OR REPLACE INTO NoteEntity(id, title, contentBlocks, createdAt, updatedAt)
-VALUES (?, ?, ?, ?, ?);
+-- ====================
+-- FOLDER QUERIES
+-- ====================
 
-getAllNotes:
+insertFolder:
+INSERT INTO FolderEntity(name, createdAt)
+VALUES (?, ?);
+
+getAllFolders:
+SELECT * FROM FolderEntity
+ORDER BY createdAt ASC;
+
+-- ====================
+-- NOTE QUERIES
+-- ====================
+
+insertNote:
+INSERT OR REPLACE INTO NoteEntity(id, folderId, title, contentBlocks, createdAt, updatedAt)
+VALUES (?, ?, ?, ?, ?, ?);
+
+getNotesByFolderId:
 SELECT * FROM NoteEntity
+WHERE folderId = ?
 ORDER BY updatedAt DESC;
 
 getNoteById:

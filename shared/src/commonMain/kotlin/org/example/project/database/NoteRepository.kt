@@ -7,19 +7,42 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 
 class NoteRepository(db: HotNoteDatabase) {
+    // Assuming your file is named Note.sq, SQLDelight generates noteQueries
     private val queries = db.noteQueries
 
-    // Get all notes as a reactive Flow for your UI
-    fun getAllNotes(): Flow<List<NoteEntity>> {
-        return queries.getAllNotes()
+    // ====================
+    // FOLDER OPERATIONS
+    // ====================
+
+    fun getAllFolders(): Flow<List<FolderEntity>> {
+        return queries.getAllFolders()
             .asFlow()
             .mapToList(Dispatchers.IO)
     }
 
-    // Insert or update a note
-    fun saveNote(id: String, title: String, contentBlocks: String, createdAt: Long, updatedAt: Long) {
+    fun createFolder(name: String, createdAt: Long = System.currentTimeMillis()) {
+        queries.insertFolder(
+            name = name,
+            createdAt = createdAt
+        )
+    }
+
+    // ====================
+    // NOTE OPERATIONS
+    // ====================
+
+    // Get notes only for the specific folder you clicked
+    fun getNotesByFolderId(folderId: Long): Flow<List<NoteEntity>> {
+        return queries.getNotesByFolderId(folderId)
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+    }
+
+    // Insert or update a note (now requires the folderId)
+    fun saveNote(id: String, folderId: Long, title: String, contentBlocks: String, createdAt: Long, updatedAt: Long) {
         queries.insertNote(
             id = id,
+            folderId = folderId,
             title = title,
             contentBlocks = contentBlocks,
             createdAt = createdAt,
