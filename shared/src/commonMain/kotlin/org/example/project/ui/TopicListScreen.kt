@@ -42,13 +42,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import org.example.project.database.FolderEntity // <-- Imported the REAL database entity
+import org.example.project.database.FolderEntity
 
 @Composable
 fun TopicListScreen(
-    folders: List<FolderEntity>, // <-- Now expects the REAL entity
+    folders: List<FolderEntity>,
     onFolderClick: (FolderEntity) -> Unit,
-    onCreateFolder: (String) -> Unit
+    onCreateFolder: (String) -> Unit,
+    onStartServer: () -> Unit // <-- 1. Added the trigger to the screen parameters
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var newFolderName by remember { mutableStateOf("") }
@@ -62,6 +63,15 @@ fun TopicListScreen(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
+
+                // <-- 2. Added the BT Test Button to the left side of the screen
+                Button(
+                    onClick = onStartServer,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
+                    Text("Start BT Server")
+                }
+
                 Text(
                     text = "Subjects",
                     style = MaterialTheme.typography.headlineMedium,
@@ -69,6 +79,7 @@ fun TopicListScreen(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.align(Alignment.Center)
                 )
+
                 FloatingActionButton(
                     onClick = { showAddDialog = true },
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -134,7 +145,7 @@ fun TopicListScreen(
 }
 
 @Composable
-fun FolderCard(folder: FolderEntity, onClick: () -> Unit) { // <-- Uses REAL entity here too
+fun FolderCard(folder: FolderEntity, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()

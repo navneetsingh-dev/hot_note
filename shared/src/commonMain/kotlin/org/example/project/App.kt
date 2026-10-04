@@ -46,6 +46,9 @@ fun App(driverFactory: DatabaseDriverFactory) {
     val repository = remember { NoteRepository(database) }
     val viewModel = remember { NoteViewModel(repository) }
 
+    // --- NEW: Initialize the Bluetooth Controller ---
+    val bluetoothController = rememberBluetoothController()
+
     // 1. Collect the real DB streams from the ViewModel
     val folders by viewModel.folders.collectAsState()
     val noteState by viewModel.noteState.collectAsState()
@@ -66,6 +69,10 @@ fun App(driverFactory: DatabaseDriverFactory) {
                 },
                 onCreateFolder = { folderName ->
                     viewModel.createFolder(folderName)
+                },
+                // --- NEW: Pass the Bluetooth trigger to the UI ---
+                onStartServer = {
+                    bluetoothController.startServer()
                 }
             )
         } else {
