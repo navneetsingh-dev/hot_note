@@ -5,9 +5,9 @@ import app.cash.sqldelight.coroutines.mapToList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 
 class NoteRepository(db: HotNoteDatabase) {
-    // Assuming your file is named Note.sq, SQLDelight generates noteQueries
     private val queries = db.noteQueries
 
     // ====================
@@ -20,7 +20,7 @@ class NoteRepository(db: HotNoteDatabase) {
             .mapToList(Dispatchers.IO)
     }
 
-    fun createFolder(name: String, createdAt: Long = System.currentTimeMillis()) {
+    suspend fun createFolder(name: String, createdAt: Long = System.currentTimeMillis()) = withContext(Dispatchers.IO) {
         queries.insertFolder(
             name = name,
             createdAt = createdAt
@@ -31,15 +31,20 @@ class NoteRepository(db: HotNoteDatabase) {
     // NOTE OPERATIONS
     // ====================
 
-    // Get notes only for the specific folder you clicked
     fun getNotesByFolderId(folderId: Long): Flow<List<NoteEntity>> {
         return queries.getNotesByFolderId(folderId)
             .asFlow()
             .mapToList(Dispatchers.IO)
     }
 
-    // Insert or update a note (now requires the folderId)
-    fun saveNote(id: String, folderId: Long, title: String, contentBlocks: String, createdAt: Long, updatedAt: Long) {
+    suspend fun saveNote(
+        id: String,
+        folderId: Long,
+        title: String,
+        contentBlocks: String,
+        createdAt: Long,
+        updatedAt: Long
+    ) = withContext(Dispatchers.IO) {
         queries.insertNote(
             id = id,
             folderId = folderId,
@@ -50,13 +55,11 @@ class NoteRepository(db: HotNoteDatabase) {
         )
     }
 
-    // Get a single note by its ID
-    fun getNoteById(id: String): NoteEntity? {
-        return queries.getNoteById(id).executeAsOneOrNull()
+    suspend fun getNoteById(id: String): NoteEntity? = withContext(Dispatchers.IO) {
+        queries.getNoteById(id).executeAsOneOrNull()
     }
 
-    // Delete a note by its ID
-    fun deleteNote(id: String) {
+    suspend fun deleteNote(id: String) = withContext(Dispatchers.IO) {
         queries.deleteNoteById(id)
     }
 }
