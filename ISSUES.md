@@ -1,0 +1,34 @@
+# Hot Note - Issue Tracker
+
+- [x] **#26**: Potential memory leaks due to improper coroutine scope/lifecycle management `[bug]`
+  - *Summary*: Summary
+- [ ] **#25**: Background sync causes excessive battery usage and retry storms `[bug]`
+  - *Summary*: Summary
+- [ ] **#24**: Add optional certificate pinning for sync endpoints (security enhancement) `[enhancement]`
+  - *Summary*: Summary
+- [ ] **#23**: Possible insecure TLS/hostname verification in sync/network client `[bug]`
+  - *Summary*: Summary
+- [ ] **#22**: Local database and backups store notes in plaintext (no encryption at rest) `[bug]`
+  - *Summary*: Summary
+- [ ] **#21**: Data loss during background sync when conflicting offline edits occur `[bug]`
+  - *Summary*: Summary
+- [ ] **#20**: Unsafe rich-text/HTML rendering may allow injection (XSS risk) `[bug]`
+  - *Summary*: Summary
+- [ ] **#19**: Large attachments can cause OOMs and failed uploads `[bug]`
+  - *Summary*: Summary
+- [ ] **#18**: Add user-facing conflict resolution UI for divergent note versions `[enhancement]`
+  - *Summary*: Summary
+- [ ] **#17**: Add optional end-to-end encryption (E2EE) for user notes `[enhancement]`
+  - *Summary*: Summary
+- [ ] **#16**: Add unit and integration tests for sync, conflict resolution, and encryption `[enhancement]`
+  - *Summary*: Summary
+- [ ] **#15**: iOS crashes due to KMP serialization/parsing edge cases when opening certain notes `[bug]`
+  - *Summary*: Summary
+- [ ] **#14**: Audit and update dependencies for known security vulnerabilities `[bug]`
+  - *Summary*: Summary
+- [ ] **#10**: P2p network capqbility
+  - *Summary*: Android device is not able to share notes to the Laptop system (arch )
+- [x] **#6**: Sidebar issue
+  - *Summary*: Steps to recreate the issue
+- [x] **#5**: Sidebar issue
+  - *Summary*: [issueofhotenote.md](https://github.com/user-attachments/files/32410519/issueofhotenote.md)
