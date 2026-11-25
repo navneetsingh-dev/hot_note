@@ -3,6 +3,7 @@ package org.example.project
 import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
 import android.content.Context
@@ -19,18 +20,18 @@ import java.util.UUID
 import kotlin.concurrent.thread
 
 class AndroidBluetoothController(
-    private val context: Context,
+    context: Context,
     private val requestPermissions: () -> Unit,
     private val requestEnableBluetooth: () -> Unit
 ) : BluetoothController {
 
-    private val adapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
+    private val appContext: Context = context.applicationContext
+    private val adapter: BluetoothAdapter? =
+        (appContext.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
     private val appUuid: UUID = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66")
     private val appName = "HotNoteP2P"
 
-    override fun isBluetoothEnabled(): Boolean {
-        return adapter?.isEnabled == true
-    }
+    override fun isBluetoothEnabled(): Boolean = adapter?.isEnabled == true
 
     private fun hasPermissions(): Boolean {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -38,7 +39,7 @@ class AndroidBluetoothController(
         } else {
             Manifest.permission.ACCESS_FINE_LOCATION
         }
-        return context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+        return appContext.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
     }
 
     @SuppressLint("MissingPermission")
@@ -52,37 +53,28 @@ class AndroidBluetoothController(
             return
         }
         adapter?.startDiscovery()
-        println("System.out: Searching for nearby devices...")
     }
 
     @SuppressLint("MissingPermission")
     override fun startServer() {
         if (!hasPermissions()) {
-            println("System.out: Requesting Bluetooth permissions from user...")
             requestPermissions()
             return
         }
-
         if (!isBluetoothEnabled()) {
-            println("System.out: Requesting user to turn on Bluetooth...")
             requestEnableBluetooth()
             return
         }
-
         thread {
             var serverSocket: BluetoothServerSocket? = null
+            var clientSocket: BluetoothSocket? = null
             try {
                 serverSocket = adapter?.listenUsingRfcommWithServiceRecord(appName, appUuid)
-                println("System.out: Server started. Waiting for connections...")
-
-                val socket: BluetoothSocket? = serverSocket?.accept()
-
-                if (socket != null) {
-                    println("System.out: Client connected successfully! Ready to receive notes.")
-                    serverSocket?.close() // <-- Fixed null-safety check here
-                }
-            } catch (e: IOException) {
-                println("System.out: Server socket failed: ${e.message}")
+                clientSocket = serverSocket?.accept()
+            } catch (_: IOException) {
+            } finally {
+                runCatching { clientSocket?.close() }
+                runCatching { serverSocket?.close() }
             }
         }
     }
@@ -97,19 +89,16 @@ class AndroidBluetoothController(
             requestEnableBluetooth()
             return
         }
-
         thread {
+            var socket: BluetoothSocket? = null
             try {
                 val device = adapter?.getRemoteDevice(deviceAddress)
-                val socket: BluetoothSocket? = device?.createRfcommSocketToServiceRecord(appUuid)
+                socket = device?.createRfcommSocketToServiceRecord(appUuid)
                 adapter?.cancelDiscovery()
-
-                println("System.out: Attempting to connect to $deviceAddress...")
                 socket?.connect()
-
-                println("System.out: Connected to server successfully!")
-            } catch (e: IOException) {
-                println("System.out: Connection failed: ${e.message}")
+            } catch (_: IOException) {
+            } finally {
+                runCatching { socket?.close() }
             }
         }
     }
@@ -118,23 +107,14 @@ class AndroidBluetoothController(
 @Composable
 actual fun rememberBluetoothController(): BluetoothController {
     val context = LocalContext.current
-
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
-        onResult = { permissions ->
-            if (permissions.all { it.value }) {
-                println("System.out: Permissions granted! Please click the button again.")
-            }
-        }
+        onResult = {}
     )
-
     val enableBluetoothLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
-        onResult = { _ ->
-            println("System.out: Bluetooth prompt finished. Please click the button again.")
-        }
+        onResult = {}
     )
-
     return remember {
         AndroidBluetoothController(
             context = context,
