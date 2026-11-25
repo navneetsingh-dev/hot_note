@@ -1,6 +1,7 @@
 package org.example.project.database
 
 import android.content.Context
+import androidx.sqlite.db.SupportSQLiteDatabase
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 
@@ -12,7 +13,13 @@ actual class DatabaseDriverFactory(context: Context) {
         return AndroidSqliteDriver(
             schema = HotNoteDatabase.Schema,
             context = appContext,
-            name = "HotNoteDatabase.db"
+            name = "HotNoteDatabase.db",
+            callback = object : AndroidSqliteDriver.Callback(HotNoteDatabase.Schema) {
+                override fun onConfigure(db: SupportSQLiteDatabase) {
+                    super.onConfigure(db)
+                    db.setForeignKeyConstraintsEnabled(true)
+                }
+            }
         )
     }
 }

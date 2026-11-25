@@ -1,7 +1,17 @@
 CREATE TABLE FolderEntity (
     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    createdAt INTEGER NOT NULL
+    createdAt INTEGER NOT NULL,
+    colorHex TEXT NOT NULL DEFAULT '#7719AA'
+);
+
+CREATE TABLE SectionEntity (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    folderId INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    colorHex TEXT NOT NULL DEFAULT '#7719AA',
+    createdAt INTEGER NOT NULL,
+    FOREIGN KEY (folderId) REFERENCES FolderEntity(id) ON DELETE CASCADE
 );
 
 CREATE TABLE NoteEntity (
@@ -11,38 +21,134 @@ CREATE TABLE NoteEntity (
     contentBlocks TEXT NOT NULL,
     createdAt INTEGER NOT NULL,
     updatedAt INTEGER NOT NULL,
+    sectionId INTEGER,
+    isPinned INTEGER NOT NULL DEFAULT 0,
+    attachmentsJson TEXT NOT NULL DEFAULT '[]',
     FOREIGN KEY (folderId) REFERENCES FolderEntity(id) ON DELETE CASCADE
 );
 
+CREATE TABLE SharedFileEntity (
+    id TEXT NOT NULL PRIMARY KEY,
+    fileName TEXT NOT NULL,
+    filePath TEXT NOT NULL,
+    mimeType TEXT NOT NULL,
+    sizeBytes INTEGER NOT NULL,
+    sha256 TEXT NOT NULL,
+    direction TEXT NOT NULL,
+    peerName TEXT NOT NULL,
+    createdAt INTEGER NOT NULL
+);
+
 -- ====================
--- FOLDER QUERIES
+-- NOTEBOOK (FOLDER) QUERIES
 -- ====================
 
 insertFolder:
-INSERT INTO FolderEntity(name, createdAt)
-VALUES (?, ?);
+INSERT INTO FolderEntity(name, createdAt, colorHex)
+VALUES (?, ?, ?);
+
+lastInsertRowId:
+SELECT last_insert_rowid();
 
 getAllFolders:
 SELECT * FROM FolderEntity
 ORDER BY createdAt ASC;
 
+getFolderById:
+SELECT * FROM FolderEntity
+WHERE id = ?;
+
+updateFolder:
+UPDATE FolderEntity
+SET name = ?, colorHex = ?
+WHERE id = ?;
+
+deleteFolderById:
+DELETE FROM FolderEntity
+WHERE id = ?;
+
 -- ====================
--- NOTE QUERIES
+-- SECTION QUERIES
+-- ====================
+
+insertSection:
+INSERT INTO SectionEntity(folderId, name, colorHex, createdAt)
+VALUES (?, ?, ?, ?);
+
+getSectionsByFolderId:
+SELECT * FROM SectionEntity
+WHERE folderId = ?
+ORDER BY createdAt ASC;
+
+getAllSections:
+SELECT * FROM SectionEntity
+ORDER BY createdAt ASC;
+
+updateSection:
+UPDATE SectionEntity
+SET name = ?, colorHex = ?
+WHERE id = ?;
+
+deleteSectionById:
+DELETE FROM SectionEntity
+WHERE id = ?;
+
+-- ====================
+-- NOTE (PAGE) QUERIES
 -- ====================
 
 insertNote:
-INSERT OR REPLACE INTO NoteEntity(id, folderId, title, contentBlocks, createdAt, updatedAt)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO NoteEntity(id, folderId, title, contentBlocks, createdAt, updatedAt, sectionId, isPinned, attachmentsJson)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+getAllNotes:
+SELECT * FROM NoteEntity
+ORDER BY isPinned DESC, updatedAt DESC;
 
 getNotesByFolderId:
 SELECT * FROM NoteEntity
 WHERE folderId = ?
-ORDER BY updatedAt DESC;
+ORDER BY isPinned DESC, updatedAt DESC;
+
+getNotesBySectionId:
+SELECT * FROM NoteEntity
+WHERE sectionId = ?
+ORDER BY isPinned DESC, updatedAt DESC;
+
+searchNotes:
+SELECT * FROM NoteEntity
+WHERE title LIKE '%' || :query || '%' OR contentBlocks LIKE '%' || :query || '%'
+ORDER BY isPinned DESC, updatedAt DESC;
 
 getNoteById:
 SELECT * FROM NoteEntity
 WHERE id = ?;
 
+updateNotePinned:
+UPDATE NoteEntity
+SET isPinned = ?, updatedAt = ?
+WHERE id = ?;
+
 deleteNoteById:
 DELETE FROM NoteEntity
+WHERE id = ?;
+
+-- ====================
+-- SHARED FILE QUERIES
+-- ====================
+
+insertSharedFile:
+INSERT OR REPLACE INTO SharedFileEntity(id, fileName, filePath, mimeType, sizeBytes, sha256, direction, peerName, createdAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+getAllSharedFiles:
+SELECT * FROM SharedFileEntity
+ORDER BY createdAt DESC;
+
+getSharedFileById:
+SELECT * FROM SharedFileEntity
+WHERE id = ?;
+
+deleteSharedFileById:
+DELETE FROM SharedFileEntity
 WHERE id = ?;
